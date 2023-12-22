@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="dist/appendable.min.js"></script>
+  <script>
+    Appendable.init(
+            "green_tripdata_2023-01.jsonl",
+            "green_tripdata_2023-01.jsonl.index"
+    ).then(async (db) => {
+      // populate fields
+      db.fields().then((fields) => {
+        document.getElementById("fields").innerHTML = JSON.stringify(
+                fields,
+                (key, value) => {
+                  if (typeof value === "bigint") {
+                    return value.toString();
+                  }
+                  return value;
+                },
+                2
+        );
+      });
+
+      // then execute the query
+      document.getElementById("execute").onclick = () => {
+        document.getElementById("results").innerHTML = "";
+
+        const query = db.query(
+                JSON.parse(document.getElementById("query").value)
+        );
+
+        bindQuery(query);
+      };
+
+      document.getElementById("results").innerHTML = "";
+
+      const query = db.query(
+              JSON.parse(document.getElementById("query").value)
+      );
+
+      bindQuery(query);
+    });
+
+    async function bindQuery(query) {
+      document.getElementById("next").disabled = true;
+
+      for (let i = 0; i < 10; i++) {
+        const result = await query.next();
+        if (result.done) {
+          return;
+        }
+        document.getElementById("results").innerHTML +=
+                JSON.stringify(result.value) + "\n";
+      }
+      while (true) {
+        document.getElementById("next").disabled = false;
+        await new Promise(
+                (resolve) => (document.getElementById("next").onclick = resolve)
+        );
+        document.getElementById("next").disabled = true;
+        const result = await query.next();
+        if (result.done) {
+          return;
+        }
+        document.getElementById("results").innerHTML +=
+                JSON.stringify(result.value) + "\n";
+      }
+    }
+  </script>
+</head>
+<body>
+<h1>
+  <a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
+  Green Cab Trip Data in 01/2023
+</h1>
+<div>
+  Download the raw data here:
+  <a href="green_tripdata_2023-01.jsonl">JSONL</a> -
+  <a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
+  <a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
+  >Source</a
+  >
+</div>
+<p>
+  Appendable is querying the JSONL and index files that GitHub pages hosts
+  <em>directly</em>. There is no server involved here!
+</p>
+<p>
+  Keep in mind that while the query syntax supports a lot of different
+  operations, Appendable doesn't support composite indexes yet. Therefore,
+  only one field at a time can be filtered on and that field must be used
+  for sorting.
+</p>
+<div style="display: flex">
+  <div>
+    <h2>Fields</h2>
+    <pre id="fields"></pre>
+  </div>
+  <div>
+    <h2>Query</h2>
+    <textarea id="query" rows="20" cols="80">
+{
+  "where": [
+    {
+      "operation": "&gt;=",
+      "key": "trip_distance",
+      "value": 10
+    }
+  ],
+  "orderBy": [
+    {
+      "key": "trip_distance",
+      "direction": "ASC"
+    }
+  ]
+}</textarea
+    >
+    <button id="execute">Execute</button>
+    <h2>Results</h2>
+    <pre id="results"></pre>
+    <button id="next">Fetch more</button>
+  </div>
+</div>
+</body>
+</html>
